@@ -27,36 +27,53 @@ class BookingsStorage(
     init {
         RoomName.entries.forEach { roomName ->
             maintenanceSlots.forEach { timeSlot ->
-                blockSlot(roomName, timeSlot)
+                tryBlockSlot(roomName, timeSlot)
             }
         }
     }
 
     fun availableSlots(roomName: RoomName): List<TimeSlot> = this.availableSlots.getValue(roomName)
 
+    fun blockSlot(timeSlot: TimeSlot, blockedFor: Int) {
+        val potentialRooms = RoomName.sufficientRooms(blockedFor)
 
-    private fun blockSlot(roomName: RoomName, timeSlot: TimeSlot) {
+        var blocked = false
+        for (room in potentialRooms) {
+            blocked = tryBlockSlot(room, timeSlot)
+            if (blocked) {
+                break
+            }
+        }
+        if (!blocked) {
+            throw RuntimeException("failed to block room")
+        }
+    }
+
+    private fun tryBlockSlot(roomName: RoomName, timeSlot: TimeSlot): Boolean {
         val roomSlots = availableSlots.getValue(roomName)
 
         val iterator = roomSlots.iterator()
         var blocked = false
         while (iterator.hasNext()) {
-            val freeSlots = iterator.next()
+            val freeSlot = iterator.next()
 
-            if (freeSlots.from.isBeforeOrEqual(timeSlot.to) && freeSlots.to.isAfterOrEqual(timeSlot.from)) {
+            // if can feet the timeSlot into free slot => fit it in, potentially splitting the free slots list
+            if (freeSlot.from.isBeforeOrEqual(timeSlot.from) && freeSlot.to.isAfterOrEqual(timeSlot.to)) {
                 blocked = true
                 iterator.remove()
 
-                roomSlots.add(TimeSlot(from = freeSlots.from, to = timeSlot.from))
-                roomSlots.add(TimeSlot(from = timeSlot.to, to = freeSlots.to))
+                if (freeSlot.from != timeSlot.from) {
+                    roomSlots.add(TimeSlot(from = freeSlot.from, to = timeSlot.from))
+                }
+                if (timeSlot.to != freeSlot.to) {
+                    roomSlots.add(TimeSlot(from = timeSlot.to, to = freeSlot.to))
+                }
+
                 break
             }
         }
-        if (!blocked) {
-            throw RuntimeException("no slots")
-        }
-
         roomSlots.sortBy { it.from }
+        return blocked
     }
 
     private fun time(str: String): LocalTime = LocalTime.parse(str)
