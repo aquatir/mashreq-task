@@ -53,10 +53,8 @@ dependencies {
     testImplementation("org.testcontainers:testcontainers")
     testImplementation("org.testcontainers:junit-jupiter")
     testImplementation("org.testcontainers:postgresql")
-
 }
 
 application {
-    // Define the main class for the application.
     mainClass = "org.example.app.AppKt"
 }
