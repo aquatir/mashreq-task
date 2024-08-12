@@ -19,9 +19,9 @@ class BookingService(
 ) {
 
     companion object {
-        // should be repeated between replicas to make sure it's exclusive, but should not be repeated between different use-cases
-        // to simplify, here we use a long integer
-        // TODO: should most likely be a parameter computed from unique service name
+        // DB lock keys. The value should be repeated between replicas to make sure it's exclusive, but should not be
+        // repeated between different use-cases. to simplify, here we use a long integer
+        // TODO: should most likely be a parameter computed from unique service name in real deployment
         const val LOCK_ID = 9876642341L
     }
 
@@ -64,8 +64,8 @@ class BookingService(
      */
     @Transactional // to support locking between multiple replicas with acquireTransactionalLockBlocking
     fun blockSlot(timeSlot: TimeSlot, blockedFor: Int): RoomName {
-        // sync access on this replica layer
-        val bookedRoom = synchronized(this) {
+        // Sync access on this replica layer to be extra sure no 2 updates happen as the same time
+        return synchronized(this) {
             checkNotMaintenanceWindow(timeSlot)
             database.acquireTransactionalLockBlocking(LOCK_ID)
 
@@ -75,19 +75,17 @@ class BookingService(
             for (room in sufficientlyLargeRooms) {
                 val blocked = tryBlockSlotInMemory(room, timeSlot)
                 if (blocked) {
+                    database.insertBooking(
+                        roomName = room,
+                        timeSlot = timeSlot,
+                        numberOfPeople = blockedFor,
+                    )
                     return@synchronized room
                 }
             }
+
             throw AllRoomsAreBookedException("No rooms ara available for $blockedFor between ${timeSlot.from} and ${timeSlot.to}.")
         }
-
-        database.insertBooking(
-            roomName = bookedRoom,
-            timeSlot = timeSlot,
-            numberOfPeople = blockedFor,
-        )
-
-        return bookedRoom
     }
 
     /**

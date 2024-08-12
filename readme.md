@@ -32,3 +32,11 @@ curl -X POST -H "Content-Type: application/json" -d '{
 ```bash
 curl -X GET -H "Content-Type: application/json" http://localhost:8080/booking/
 ```
+
+# Assumptions
+
+- Handling rooms as enum is okay, see comment on `RoomName` class.
+- Handling maintenance intervals as hardcoded values is okay, see comment in `BookingService`
+- No serious load is expected => total pessimistic locking is fast/good enough.
+    - Assumes postgres and uses transaction-level advisory locks to implement locking due to simplicity
+- 
