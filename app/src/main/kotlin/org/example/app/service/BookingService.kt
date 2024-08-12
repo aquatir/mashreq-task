@@ -5,14 +5,22 @@ import BookingFallsForMaintenance
 import org.example.app.RoomName
 import org.example.app.TimeSlot
 import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.time.LocalTime
 
 @Service
 class BookingService(
-//    private val database: Database
+    private val database: Database
 ) {
 
+    companion object {
+        // should be repeated between replicas to make sure it's exclusive, but should not be repeated between different use-cases
+        // to simplify, here we use a long integer
+        const val LOCK_ID = 9876642341L
+    }
+
     // Hardcoded list of maintenance windows
+    // More extensible design would be to save the maintenance window into config / database
     private val maintenanceSlots = listOf(
         TimeSlot(from = LocalTime.parse("09:00"), to = LocalTime.parse("09:15")),
         TimeSlot(from = LocalTime.parse("13:00"), to = LocalTime.parse("13:15")),
@@ -38,7 +46,12 @@ class BookingService(
         }
     }
 
-    fun availableSlots(roomName: RoomName): List<TimeSlot> = this.availableSlots.getValue(roomName)
+    @Transactional // to support locking between multiple replicas with acquireTransactionalLockBlocking
+    fun availableSlots(roomName: RoomName): List<TimeSlot> {
+        database.acquireTransactionalLockBlocking(LOCK_ID)
+        updateAvailableSlots()
+        return this.availableSlots.getValue(roomName)
+    }
 
     /**
      * Find a room and block it, throws exception if it's not possible
@@ -46,17 +59,29 @@ class BookingService(
      * @throws BookingFallsForMaintenance if [timeSlot] falls on [maintenanceSlots]
      * @throws AllRoomsAreBookedException if none of the rooms are available
      */
+    @Transactional // to support locking between multiple replicas with acquireTransactionalLockBlocking
     fun blockSlot(timeSlot: TimeSlot, blockedFor: Int): RoomName {
-        checkNotMaintenanceWindow(timeSlot)
-        val sufficientlyLargeRooms = RoomName.sufficientRooms(blockedFor)
+        // sync access on this replica layer
+        return synchronized(this) {
+            checkNotMaintenanceWindow(timeSlot)
+            database.acquireTransactionalLockBlocking(LOCK_ID)
 
-        for (room in sufficientlyLargeRooms) {
-            val blocked = tryBlockSlot(room, timeSlot)
-            if (blocked) {
-                return room
+            updateAvailableSlots()
+            val sufficientlyLargeRooms = RoomName.sufficientRooms(blockedFor)
+
+            for (room in sufficientlyLargeRooms) {
+                val blocked = tryBlockSlot(room, timeSlot)
+                if (blocked) {
+                    return@synchronized room
+                }
             }
+            throw AllRoomsAreBookedException("No rooms ara available for $blockedFor between ${timeSlot.from} and ${timeSlot.to}.")
         }
-        throw AllRoomsAreBookedException("No rooms ara available for $blockedFor between ${timeSlot.from} and ${timeSlot.to}.")
+    }
+
+    // Read data from DB to update a list of available slots
+    private fun updateAvailableSlots() {
+
     }
 
     /**

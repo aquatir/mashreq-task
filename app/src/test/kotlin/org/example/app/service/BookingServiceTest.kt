@@ -10,11 +10,15 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.MethodSource
+import org.mockito.kotlin.mock
 import java.time.LocalTime
 
 class BookingServiceTest {
 
-    private val bookingService = BookingService()
+    private val database: Database = mock()
+    private val bookingService = BookingService(
+        database = database
+    )
 
     companion object {
         @JvmStatic
@@ -64,7 +68,9 @@ class BookingServiceTest {
 
     @Test
     fun `test blockSlot blocks next big enough room if previous is blocked`() {
+
         val timeSlot = TimeSlot(from = LocalTime.parse("00:15"), to = LocalTime.parse("04:30"))
+
         bookingService.blockSlot(timeSlot, 2)
         bookingService.blockSlot(timeSlot, 2)
         bookingService.blockSlot(timeSlot, 2)
