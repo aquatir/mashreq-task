@@ -1,4 +1,4 @@
-package org.example.app
+package org.example.app.service
 
 import org.jooq.DSLContext
 import org.springframework.stereotype.Service

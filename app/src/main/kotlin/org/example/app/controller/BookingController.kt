@@ -1,5 +1,6 @@
-package org.example.app
+package org.example.app.controller
 
+import org.example.app.service.BookingService
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 

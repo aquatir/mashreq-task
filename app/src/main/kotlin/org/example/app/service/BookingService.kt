@@ -1,5 +1,7 @@
-package org.example.app
+package org.example.app.service
 
+import org.example.app.RoomName
+import org.example.app.TimeSlot
 import org.springframework.stereotype.Service
 
 @Service

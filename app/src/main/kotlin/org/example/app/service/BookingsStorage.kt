@@ -1,5 +1,9 @@
-package org.example.app
+package org.example.app.service
 
+import AllRoomsAreBookedException
+import BookingFallsForMaintenance
+import org.example.app.RoomName
+import org.example.app.TimeSlot
 import org.springframework.stereotype.Service
 import java.time.LocalTime
 
@@ -8,12 +12,14 @@ class BookingsStorage(
 //    private val database: Database,
 ) {
 
+    // Hardcoded list of maintenance windows
     private val maintenanceSlots = listOf(
         TimeSlot(from = LocalTime.parse("09:00"), to = LocalTime.parse("09:15")),
         TimeSlot(from = LocalTime.parse("13:00"), to = LocalTime.parse("13:15")),
         TimeSlot(from = LocalTime.parse("17:00"), to = LocalTime.parse("17:15")),
     )
 
+    // a sorted list of available intervals for each room
     private val availableSlots: Map<RoomName, MutableList<TimeSlot>> = initialize()
 
     private fun initialize(): Map<RoomName, MutableList<TimeSlot>> {
@@ -34,21 +40,43 @@ class BookingsStorage(
 
     fun availableSlots(roomName: RoomName): List<TimeSlot> = this.availableSlots.getValue(roomName)
 
+    /**
+     * Find a room and block the slots
+     */
     fun blockSlot(timeSlot: TimeSlot, blockedFor: Int) {
-        val potentialRooms = RoomName.sufficientRooms(blockedFor)
+        checkNotMaintenanceWindow(timeSlot)
+        val sufficientlyLargeRooms = RoomName.sufficientRooms(blockedFor)
 
         var blocked = false
-        for (room in potentialRooms) {
+        for (room in sufficientlyLargeRooms) {
             blocked = tryBlockSlot(room, timeSlot)
             if (blocked) {
                 break
             }
         }
         if (!blocked) {
-            throw RuntimeException("failed to block room")
+            throw AllRoomsAreBookedException("No rooms ara available for $blockedFor between ${timeSlot.from} and ${timeSlot.to}.")
         }
     }
 
+    /**
+     * Check if timeSlot falls on a maintenance window to throw a specific exception.
+     * Could drop this check completely if general exception is enough.
+     */
+    fun checkNotMaintenanceWindow(timeSlot: TimeSlot) {
+        maintenanceSlots.forEach { maintenanceSlot ->
+            if (
+                (timeSlot.from.isAfterOrEqual(maintenanceSlot.from) && timeSlot.from.isBeforeOrEqual(maintenanceSlot.to))
+                || (timeSlot.to.isAfterOrEqual(maintenanceSlot.from) && timeSlot.to.isBeforeOrEqual(maintenanceSlot.to))
+            ) {
+                throw BookingFallsForMaintenance("Failed to block a room between ${timeSlot.from} and ${timeSlot.to} due to maintenance.")
+            }
+        }
+    }
+
+    /**
+     * Try to block a specific room if it's available, return true on success, and false on failure
+     */
     private fun tryBlockSlot(roomName: RoomName, timeSlot: TimeSlot): Boolean {
         val roomSlots = availableSlots.getValue(roomName)
 
