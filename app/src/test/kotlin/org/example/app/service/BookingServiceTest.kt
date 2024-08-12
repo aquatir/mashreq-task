@@ -12,9 +12,9 @@ import org.junit.jupiter.params.provider.EnumSource
 import org.junit.jupiter.params.provider.MethodSource
 import java.time.LocalTime
 
-class BookingsStorageTest {
+class BookingServiceTest {
 
-    private val bookingsStorage = BookingsStorage()
+    private val bookingService = BookingService()
 
     companion object {
         @JvmStatic
@@ -43,14 +43,14 @@ class BookingsStorageTest {
             TimeSlot(from = LocalTime.parse("17:15"), to = LocalTime.parse("23:59"))
         )
 
-        assertThat(bookingsStorage.availableSlots(roomName)).isEqualTo(expectedInitialValues)
+        assertThat(bookingService.availableSlots(roomName)).isEqualTo(expectedInitialValues)
     }
 
     @Test
     fun `test blockSlot returns correct times after booking on success`() {
-        bookingsStorage.blockSlot(TimeSlot(from = LocalTime.parse("00:00"), to = LocalTime.parse("04:30")), 2)
+        bookingService.blockSlot(TimeSlot(from = LocalTime.parse("00:00"), to = LocalTime.parse("04:30")), 2)
 
-        val afterBooking = bookingsStorage.availableSlots(RoomName.AMAZE)
+        val afterBooking = bookingService.availableSlots(RoomName.AMAZE)
 
         assertThat(afterBooking).isEqualTo(
             listOf(
@@ -65,10 +65,10 @@ class BookingsStorageTest {
     @Test
     fun `test blockSlot blocks next big enough room if previous is blocked`() {
         val timeSlot = TimeSlot(from = LocalTime.parse("00:15"), to = LocalTime.parse("04:30"))
-        bookingsStorage.blockSlot(timeSlot, 2)
-        bookingsStorage.blockSlot(timeSlot, 2)
-        bookingsStorage.blockSlot(timeSlot, 2)
-        bookingsStorage.blockSlot(timeSlot, 2)
+        bookingService.blockSlot(timeSlot, 2)
+        bookingService.blockSlot(timeSlot, 2)
+        bookingService.blockSlot(timeSlot, 2)
+        bookingService.blockSlot(timeSlot, 2)
 
         val expectedBookings = listOf(
             TimeSlot(from = LocalTime.parse("00:00"), to = LocalTime.parse("00:15")),
@@ -78,22 +78,22 @@ class BookingsStorageTest {
             TimeSlot(from = LocalTime.parse("17:15"), to = LocalTime.parse("23:59"))
         )
 
-        assertThat(bookingsStorage.availableSlots(RoomName.AMAZE)).isEqualTo(expectedBookings)
-        assertThat(bookingsStorage.availableSlots(RoomName.BEAUTY)).isEqualTo(expectedBookings)
-        assertThat(bookingsStorage.availableSlots(RoomName.INSPIRE)).isEqualTo(expectedBookings)
-        assertThat(bookingsStorage.availableSlots(RoomName.STRIVE)).isEqualTo(expectedBookings)
+        assertThat(bookingService.availableSlots(RoomName.AMAZE)).isEqualTo(expectedBookings)
+        assertThat(bookingService.availableSlots(RoomName.BEAUTY)).isEqualTo(expectedBookings)
+        assertThat(bookingService.availableSlots(RoomName.INSPIRE)).isEqualTo(expectedBookings)
+        assertThat(bookingService.availableSlots(RoomName.STRIVE)).isEqualTo(expectedBookings)
     }
 
     @Test
     fun `test blockSlot throws AllRoomsAreBookedException if all rooms are booked`() {
         val timeSlot = TimeSlot(from = LocalTime.parse("00:15"), to = LocalTime.parse("04:30"))
-        bookingsStorage.blockSlot(timeSlot, 2)
-        bookingsStorage.blockSlot(timeSlot, 2)
-        bookingsStorage.blockSlot(timeSlot, 2)
-        bookingsStorage.blockSlot(timeSlot, 2)
+        bookingService.blockSlot(timeSlot, 2)
+        bookingService.blockSlot(timeSlot, 2)
+        bookingService.blockSlot(timeSlot, 2)
+        bookingService.blockSlot(timeSlot, 2)
 
         assertThatThrownBy {
-            bookingsStorage.blockSlot(timeSlot, 2)
+            bookingService.blockSlot(timeSlot, 2)
         }.isInstanceOf(AllRoomsAreBookedException::class.java)
             .hasMessageMatching("No rooms ara available for 2 between 00:15 and 04:30.")
     }
@@ -102,7 +102,7 @@ class BookingsStorageTest {
     @MethodSource("timeSlotsFallingAroundMaintenanceWindow")
     fun `test blockSlot throws BookingFallsForMaintenance if booking around maintenance window`(timeSlot: TimeSlot) {
         assertThatThrownBy {
-            bookingsStorage.blockSlot(timeSlot, 2)
+            bookingService.blockSlot(timeSlot, 2)
         }.isInstanceOf(BookingFallsForMaintenance::class.java)
             .hasMessageMatching("Failed to block a room between ${timeSlot.from} and ${timeSlot.to} due to maintenance.")
     }
