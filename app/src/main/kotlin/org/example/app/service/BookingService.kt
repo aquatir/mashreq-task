@@ -1,9 +1,10 @@
 package org.example.app.service
 
-import AllRoomsAreBookedException
-import BookingFallsForMaintenance
 import org.example.app.RoomName
 import org.example.app.TimeSlot
+import org.example.app.http.AllRoomsAreBookedException
+import org.example.app.http.BookingFallsForMaintenance
+import org.example.app.localTimeFrom
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -33,22 +34,19 @@ class BookingService(
     )
 
     // a sorted list of available intervals for each room
-    private val availableSlots: Map<RoomName, MutableList<TimeSlot>> = initialize()
+    private var availableSlots: Map<RoomName, MutableList<TimeSlot>> = initialize()
 
     private fun initialize(): Map<RoomName, MutableList<TimeSlot>> {
         val map = HashMap<RoomName, MutableList<TimeSlot>>()
         RoomName.entries.forEach { roomName ->
-            map[roomName] = mutableListOf(TimeSlot(from = time("00:00"), to = time("23:59")))
+            map[roomName] = mutableListOf(TimeSlot(from = localTimeFrom("00:00"), to = localTimeFrom("23:59")))
         }
+
         return map
     }
 
     init {
-        RoomName.entries.forEach { roomName ->
-            maintenanceSlots.forEach { timeSlot ->
-                tryBlockSlotInMemory(roomName, timeSlot)
-            }
-        }
+        addMaintenanceSlots()
     }
 
     @Transactional // to support locking between multiple replicas with acquireTransactionalLockBlocking
@@ -90,6 +88,22 @@ class BookingService(
         )
 
         return bookedRoom
+    }
+
+    /**
+     * Test helper to reset internal state between test runs. Don't use for production code
+     */
+    fun resetInternalState() {
+        availableSlots = initialize()
+        addMaintenanceSlots()
+    }
+
+    private fun addMaintenanceSlots() {
+        RoomName.entries.forEach { roomName ->
+            maintenanceSlots.forEach { timeSlot ->
+                tryBlockSlotInMemory(roomName, timeSlot)
+            }
+        }
     }
 
     // Read data from DB to update a list of available slots
@@ -147,7 +161,6 @@ class BookingService(
         return blocked
     }
 
-    private fun time(str: String): LocalTime = LocalTime.parse(str)
 
     private fun LocalTime.isBeforeOrEqual(otherTime: LocalTime): Boolean = this.isBefore(otherTime) || this == otherTime
     private fun LocalTime.isAfterOrEqual(otherTime: LocalTime): Boolean = this.isAfter(otherTime) || this == otherTime

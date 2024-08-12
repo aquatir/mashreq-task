@@ -7,7 +7,9 @@ import org.jooq.generated.Tables.BOOKINGS
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.time.LocalTime
+import java.util.UUID
 
+// TODO: Add tests for methods
 @Service
 class Database(
     private val dslContext: DSLContext,
@@ -38,6 +40,7 @@ class Database(
 
     fun insertBooking(roomName: RoomName, timeSlot: TimeSlot, numberOfPeople: Int) {
         dslContext.insertInto(BOOKINGS)
+            .set(BOOKINGS.ID, UUID.randomUUID())
             .set(BOOKINGS.ROOM_NAME, roomName.toString())
             .set(BOOKINGS.BOOKING_DAY, LocalDate.now().toString())
             .set(BOOKINGS.FROM_TIME, timeSlot.from.toString())

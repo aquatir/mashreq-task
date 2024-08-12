@@ -1,7 +1,7 @@
 package org.example.app.service
 
-import AllRoomsAreBookedException
-import BookingFallsForMaintenance
+import org.example.app.http.AllRoomsAreBookedException
+import org.example.app.http.BookingFallsForMaintenance
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.example.app.RoomName

@@ -1,9 +1,5 @@
-package org.example.app.controller
+package org.example.app.http
 
-import ClientRequestException
-import org.example.app.CreateBookingRequest
-import org.example.app.CreateBookingResponse
-import org.example.app.GetAvailableSlotsResponse
 import org.example.app.RoomName
 import org.example.app.service.BookingService
 import org.springframework.web.bind.annotation.GetMapping
@@ -43,14 +39,12 @@ class BookingController(
     private fun validateCreateBookingRequest(request: CreateBookingRequest) {
         val today = LocalDate.now()
         if (request.date != today) {
-            throw ClientRequestException("Can only book rooms for today '$today', received '${request.date}' in a request")
+            throw ClientRequestException("Can only book rooms for today '$today', received '${request.date}' in a request.")
         }
 
         if (request.numberOfPeople < 1) {
-            throw ClientRequestException("Can only book a room if numberOfPeople is more than 1, received '${request.numberOfPeople}'")
+            throw ClientRequestException("Number of people cannot be a negative number, received '${request.numberOfPeople}' in a request.")
         }
-
-
     }
 
 }

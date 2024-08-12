@@ -1,5 +1,7 @@
-package org.example.app
+package org.example.app.http
 
+import org.example.app.RoomName
+import org.example.app.TimeSlot
 import java.time.LocalDate
 
 data class ErrorResponse(val error: String)
