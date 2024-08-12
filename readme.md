@@ -35,8 +35,9 @@ curl -X GET -H "Content-Type: application/json" http://localhost:8080/booking/
 
 # Assumptions
 
-- Handling rooms as enum is okay, see comment on `RoomName` class.
+- Handling rooms as enum is okay (provided no extra rooms are expected) see comment on `RoomName` class.
 - Handling maintenance intervals as hardcoded values is okay, see comment in `BookingService`
-- No serious load is expected => total pessimistic locking is fast/good enough.
-    - Assumes postgres and uses transaction-level advisory locks to implement locking due to simplicity
+- No serious load is expected => pessimistic locking on DB is fast/good enough.
+    - Assumes postgres and uses transaction-level advisory locks to implement locking due to simplicity of
+      implementation
 - 

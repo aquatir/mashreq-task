@@ -50,7 +50,7 @@ class BookingService(
     }
 
     @Transactional // to support locking between multiple replicas with acquireTransactionalLockBlocking
-    fun availableSlots(roomName: RoomName): List<TimeSlot> {
+    fun availableSlots(roomName: RoomName): List<TimeSlot> = synchronized(this) {
         database.acquireTransactionalLockBlocking(LOCK_ID)
         updateAvailableSlots()
         return this.availableSlots.getValue(roomName)
@@ -64,7 +64,7 @@ class BookingService(
      */
     @Transactional // to support locking between multiple replicas with acquireTransactionalLockBlocking
     fun blockSlot(timeSlot: TimeSlot, blockedFor: Int): RoomName {
-        // Sync access on this replica layer to be extra sure no 2 updates happen as the same time
+        // Sync access on this replica layer to be extra sure no 2 updates happen as the same which is needed due to internal state management in memory
         return synchronized(this) {
             checkNotMaintenanceWindow(timeSlot)
             database.acquireTransactionalLockBlocking(LOCK_ID)
