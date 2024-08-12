@@ -3,10 +3,10 @@
 Run Postgres
 
 ```
-docker-compose up &
+docker-compose up 
 ```
 
-Run the app
+In a separate terminal (or after running above with `&`) run the app.
 
 ```
 ./gradlew app:bootRun
