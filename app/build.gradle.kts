@@ -1,3 +1,4 @@
+// TODO: move artifacts and versions to gradle/libs.versions.toml file
 plugins {
     id("buildlogic.kotlin-application-conventions")
 

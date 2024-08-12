@@ -6,8 +6,12 @@ import org.example.app.RoomName
 import org.example.app.TimeSlot
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
 import java.time.LocalTime
 
+/**
+ * Keeps available free slots inside availableSlots map at all times
+ */
 @Service
 class BookingService(
     private val database: Database
@@ -16,11 +20,12 @@ class BookingService(
     companion object {
         // should be repeated between replicas to make sure it's exclusive, but should not be repeated between different use-cases
         // to simplify, here we use a long integer
+        // TODO: should most likely be a parameter computed from unique service name
         const val LOCK_ID = 9876642341L
     }
 
     // Hardcoded list of maintenance windows
-    // More extensible design would be to save the maintenance window into config / database
+    // TODO: More extensible design would be to save the maintenance window into config / database
     private val maintenanceSlots = listOf(
         TimeSlot(from = LocalTime.parse("09:00"), to = LocalTime.parse("09:15")),
         TimeSlot(from = LocalTime.parse("13:00"), to = LocalTime.parse("13:15")),
@@ -41,7 +46,7 @@ class BookingService(
     init {
         RoomName.entries.forEach { roomName ->
             maintenanceSlots.forEach { timeSlot ->
-                tryBlockSlot(roomName, timeSlot)
+                tryBlockSlotInMemory(roomName, timeSlot)
             }
         }
     }
@@ -62,7 +67,7 @@ class BookingService(
     @Transactional // to support locking between multiple replicas with acquireTransactionalLockBlocking
     fun blockSlot(timeSlot: TimeSlot, blockedFor: Int): RoomName {
         // sync access on this replica layer
-        return synchronized(this) {
+        val bookedRoom = synchronized(this) {
             checkNotMaintenanceWindow(timeSlot)
             database.acquireTransactionalLockBlocking(LOCK_ID)
 
@@ -70,18 +75,31 @@ class BookingService(
             val sufficientlyLargeRooms = RoomName.sufficientRooms(blockedFor)
 
             for (room in sufficientlyLargeRooms) {
-                val blocked = tryBlockSlot(room, timeSlot)
+                val blocked = tryBlockSlotInMemory(room, timeSlot)
                 if (blocked) {
                     return@synchronized room
                 }
             }
             throw AllRoomsAreBookedException("No rooms ara available for $blockedFor between ${timeSlot.from} and ${timeSlot.to}.")
         }
+
+        database.insertBooking(
+            roomName = bookedRoom,
+            timeSlot = timeSlot,
+            numberOfPeople = blockedFor,
+        )
+
+        return bookedRoom
     }
 
     // Read data from DB to update a list of available slots
     private fun updateAvailableSlots() {
-
+        val bookings = database.selectBookingsForDay(date = LocalDate.now())
+        bookings.forEach { (room, existingBookings) ->
+            existingBookings.forEach { oneBooking ->
+                tryBlockSlotInMemory(room, oneBooking)
+            }
+        }
     }
 
     /**
@@ -102,7 +120,7 @@ class BookingService(
     /**
      * Try to block a specific room if it's available, return true on success, and false on failure
      */
-    private fun tryBlockSlot(roomName: RoomName, timeSlot: TimeSlot): Boolean {
+    private fun tryBlockSlotInMemory(roomName: RoomName, timeSlot: TimeSlot): Boolean {
         val roomSlots = availableSlots.getValue(roomName)
 
         val iterator = roomSlots.iterator()
