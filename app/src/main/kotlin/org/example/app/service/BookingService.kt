@@ -41,29 +41,29 @@ class BookingService(
     fun availableSlots(roomName: RoomName): List<TimeSlot> = this.availableSlots.getValue(roomName)
 
     /**
-     * Find a room and block the slots
+     * Find a room and block it, throws exception if it's not possible
+     *
+     * @throws BookingFallsForMaintenance if [timeSlot] falls on [maintenanceSlots]
+     * @throws AllRoomsAreBookedException if none of the rooms are available
      */
-    fun blockSlot(timeSlot: TimeSlot, blockedFor: Int) {
+    fun blockSlot(timeSlot: TimeSlot, blockedFor: Int): RoomName {
         checkNotMaintenanceWindow(timeSlot)
         val sufficientlyLargeRooms = RoomName.sufficientRooms(blockedFor)
 
-        var blocked = false
         for (room in sufficientlyLargeRooms) {
-            blocked = tryBlockSlot(room, timeSlot)
+            val blocked = tryBlockSlot(room, timeSlot)
             if (blocked) {
-                break
+                return room
             }
         }
-        if (!blocked) {
-            throw AllRoomsAreBookedException("No rooms ara available for $blockedFor between ${timeSlot.from} and ${timeSlot.to}.")
-        }
+        throw AllRoomsAreBookedException("No rooms ara available for $blockedFor between ${timeSlot.from} and ${timeSlot.to}.")
     }
 
     /**
      * Check if timeSlot falls on a maintenance window to throw a specific exception.
      * Could drop this check completely if general exception is enough.
      */
-    fun checkNotMaintenanceWindow(timeSlot: TimeSlot) {
+    private fun checkNotMaintenanceWindow(timeSlot: TimeSlot) {
         maintenanceSlots.forEach { maintenanceSlot ->
             if (
                 (timeSlot.from.isAfterOrEqual(maintenanceSlot.from) && timeSlot.from.isBeforeOrEqual(maintenanceSlot.to))
