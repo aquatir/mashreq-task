@@ -30,6 +30,7 @@ class BookingController(
 
     @GetMapping("/")
     fun getAvailableSlots(
+
     ): GetAvailableSlotsResponse {
         val roomToSlots = RoomName.entries.associateWith { bookingService.availableSlots(it) }
         return GetAvailableSlotsResponse(slots = roomToSlots)

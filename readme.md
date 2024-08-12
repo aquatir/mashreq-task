@@ -41,6 +41,7 @@ curl -X GET -H "Content-Type: application/json" http://localhost:8080/booking/
 
 # Assumptions
 
+- Didn't implement `As a user, I should be able to see meeting rooms available by giving the time range.` part of assignment, but it should be trivial with the way the available slots are stored.
 - Handling rooms as enum is okay (provided no extra rooms are expected) see comment on `RoomName` class.
 - Handling maintenance intervals as hardcoded values is okay, see comment in `BookingService`
 - No serious load is expected => pessimistic locking on DB is fast/good enough.
