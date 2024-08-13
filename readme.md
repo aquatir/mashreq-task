@@ -33,6 +33,12 @@ curl -X POST -H "Content-Type: application/json" -d '{
 curl -X GET -H "Content-Type: application/json" http://localhost:8080/booking/
 ```
 
+### Get available bookings with filtering
+
+```bash
+curl -X GET -H "Content-Type: application/json" "http://localhost:8080/booking/?from=06:35&to=17:00"
+```
+
 # Running for development
 
 - Run `./gradlew app:generateJooqClasses` to generate jooq classes. Make sure `app/build/generated-jooq` is available as

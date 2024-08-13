@@ -77,16 +77,16 @@ class BookingService(
 
                 // 'from' is outside interval, but 'to' is inside => cutting the slot
                 // make sure we don't add slot with the same from/to time after cutting
-                slot.from <= fromNonNull && slot.to <= toNonNull -> if (slot.to != fromNonNull) {
+                slot.from <= fromNonNull && slot.to in fromNonNull..toNonNull -> if (slot.to != fromNonNull) {
                     result.add(slot.copy(from = fromNonNull))
                 }
 
                 // slot is fully inside required brackets
-                slot.from >= fromNonNull && slot.to <= toNonNull -> result.add(slot.copy())
+                slot.from in fromNonNull..toNonNull && slot.to in fromNonNull..toNonNull -> result.add(slot.copy())
 
                 // 'from' is inside interval, but 'to' is outside => cutting the slot
                 // make sure we don't add slot with the same from/to time after cutting
-                slot.from >= fromNonNull && slot.to >= toNonNull -> if (slot.from != toNonNull) {
+                slot.from in fromNonNull..toNonNull && slot.to >= toNonNull -> if (slot.from != toNonNull) {
                     result.add(slot.copy(to = toNonNull))
                 }
 

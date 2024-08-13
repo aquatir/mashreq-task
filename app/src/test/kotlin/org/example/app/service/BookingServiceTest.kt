@@ -128,6 +128,21 @@ class BookingServiceTest {
     }
 
     @Test
+    fun `test availableSlots filter fall on maintenance borders`() {
+        val expectedValues = listOf(
+            TimeSlot(from = localTimeFrom("09:15"), to = localTimeFrom("13:00")),
+            TimeSlot(from = localTimeFrom("13:15"), to = localTimeFrom("17:00")),
+        )
+
+        assertThat(
+            bookingService.availableSlots(
+                from = localTimeFrom("09:00"),
+                to = localTimeFrom("17:00"),
+            )[RoomName.AMAZE]
+        ).isEqualTo(expectedValues)
+    }
+
+    @Test
     fun `test blockSlot returns correct times after booking on success`() {
         val timeSlot = TimeSlot(from = localTimeFrom("00:00"), to = localTimeFrom("04:30"))
         bookingService.blockSlot(timeSlot, 2)
