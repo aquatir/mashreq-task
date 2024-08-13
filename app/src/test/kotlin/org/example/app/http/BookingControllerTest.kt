@@ -188,7 +188,7 @@ class BookingControllerTest : GenericSpringContextTest() {
         assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
         val respBody = objectMapper.readValue(response.body, GetAvailableSlotsResponse::class.java)
 
-        val expectedInitialValues = listOf(
+        val expectedValues = listOf(
             TimeSlot(from = localTimeFrom("00:00"), to = localTimeFrom("07:00")),
             TimeSlot(from = localTimeFrom("07:30"), to = localTimeFrom("09:00")),
             TimeSlot(from = localTimeFrom("09:15"), to = localTimeFrom("13:00")),
@@ -196,7 +196,31 @@ class BookingControllerTest : GenericSpringContextTest() {
             TimeSlot(from = localTimeFrom("17:15"), to = localTimeFrom("23:59"))
         )
         RoomName.entries.forEach {
-            assertThat(respBody.slots.getValue(it)).isEqualTo(expectedInitialValues)
+            assertThat(respBody.slots.getValue(it)).isEqualTo(expectedValues)
+        }
+    }
+
+    @Test
+    fun `test getAvailableSlots returns correct slots with filtering`() {
+
+        val response = testRestTemplate.exchange(
+            "/booking/?from=${localTimeFrom("07:00")}&to=${localTimeFrom("19:00")}",
+            HttpMethod.GET,
+            HttpEntity("{}"),
+            String::class.java
+        )
+
+        assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+        val respBody = objectMapper.readValue(response.body, GetAvailableSlotsResponse::class.java)
+
+        val expectedValues = listOf(
+            TimeSlot(from = localTimeFrom("07:00"), to = localTimeFrom("09:00")),
+            TimeSlot(from = localTimeFrom("09:15"), to = localTimeFrom("13:00")),
+            TimeSlot(from = localTimeFrom("13:15"), to = localTimeFrom("17:00")),
+            TimeSlot(from = localTimeFrom("17:15"), to = localTimeFrom("19:00"))
+        )
+        RoomName.entries.forEach {
+            assertThat(respBody.slots.getValue(it)).isEqualTo(expectedValues)
         }
     }
 }

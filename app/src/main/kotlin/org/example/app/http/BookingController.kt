@@ -1,6 +1,5 @@
 package org.example.app.http
 
-import org.example.app.RoomName
 import org.example.app.service.BookingService
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -8,6 +7,7 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import java.time.LocalDate
+import java.time.LocalTime
 
 @RestController
 @RequestMapping("/booking")
@@ -30,9 +30,10 @@ class BookingController(
 
     @GetMapping("/")
     fun getAvailableSlots(
-
+        from: LocalTime? = null,
+        to: LocalTime? = null,
     ): GetAvailableSlotsResponse {
-        val roomToSlots = RoomName.entries.associateWith { bookingService.availableSlots(it) }
+        val roomToSlots = bookingService.availableSlots(from = from, to = to)
         return GetAvailableSlotsResponse(slots = roomToSlots)
     }
 

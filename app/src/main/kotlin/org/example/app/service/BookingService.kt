@@ -50,10 +50,54 @@ class BookingService(
     }
 
     @Transactional // to support locking between multiple replicas with acquireTransactionalLockBlocking
-    fun availableSlots(roomName: RoomName): List<TimeSlot> = synchronized(this) {
+    fun availableSlots(
+        from: LocalTime? = null,
+        to: LocalTime? = null,
+    ): Map<RoomName, List<TimeSlot>> = synchronized(this) { // sync to preserve internal state
         database.acquireTransactionalLockBlocking(LOCK_ID)
         updateAvailableSlots()
-        return this.availableSlots.getValue(roomName)
+        RoomName.entries.associateWith { availableSlots(roomName = it, from = from, to = to) }
+    }
+
+    private fun availableSlots(
+        roomName: RoomName,
+        from: LocalTime? = null,
+        to: LocalTime? = null,
+    ): List<TimeSlot> {
+        val fromNonNull = from ?: localTimeFrom("00:00")
+        val toNonNull = to ?: localTimeFrom("23:59")
+
+        val slots = this.availableSlots.getValue(roomName)
+        val result = mutableListOf<TimeSlot>()
+
+        for (slot in slots) {
+            when {
+                // skipping: before target interval
+                slot.to <= fromNonNull -> continue
+
+                // 'from' is outside interval, but 'to' is inside => cutting the slot
+                // make sure we don't add slot with the same from/to time after cutting
+                slot.from <= fromNonNull && slot.to <= toNonNull -> if (slot.to != fromNonNull) {
+                    result.add(slot.copy(from = fromNonNull))
+                }
+
+                // slot is fully inside required brackets
+                slot.from >= fromNonNull && slot.to <= toNonNull -> result.add(slot.copy())
+
+                // 'from' is inside interval, but 'to' is outside => cutting the slot
+                // make sure we don't add slot with the same from/to time after cutting
+                slot.from >= fromNonNull && slot.to >= toNonNull -> if (slot.from != toNonNull) {
+                    result.add(slot.copy(to = toNonNull))
+                }
+
+                // skipping slot: after target interval
+                // also breaking, because slots are sorter, and if this happens once, it will happen for all future slots
+                // as well
+                slot.from >= toNonNull -> break
+            }
+        }
+
+        return result
     }
 
     /**
