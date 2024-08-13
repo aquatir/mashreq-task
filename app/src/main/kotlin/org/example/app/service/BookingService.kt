@@ -165,8 +165,8 @@ class BookingService(
     private fun checkNotMaintenanceWindow(timeSlot: TimeSlot) {
         maintenanceSlots.forEach { maintenanceSlot ->
             if (
-                (timeSlot.from.isAfterOrEqual(maintenanceSlot.from) && timeSlot.from.isBeforeOrEqual(maintenanceSlot.to))
-                || (timeSlot.to.isAfterOrEqual(maintenanceSlot.from) && timeSlot.to.isBeforeOrEqual(maintenanceSlot.to))
+                (timeSlot.from >= maintenanceSlot.from && timeSlot.from <= maintenanceSlot.to)
+                || (timeSlot.to >= maintenanceSlot.from && timeSlot.to <= maintenanceSlot.to)
             ) {
                 throw BookingFallsForMaintenance("Failed to block a room between ${timeSlot.from} and ${timeSlot.to} due to maintenance.")
             }
@@ -184,8 +184,8 @@ class BookingService(
         while (iterator.hasNext()) {
             val freeSlot = iterator.next()
 
-            // if can feet the timeSlot into free slot => fit it in, potentially splitting the free slots list
-            if (freeSlot.from.isBeforeOrEqual(timeSlot.from) && freeSlot.to.isAfterOrEqual(timeSlot.to)) {
+            // if we can fit the timeSlot into free slot => fit it in, potentially splitting the free slots list
+            if (freeSlot.from <= timeSlot.from && freeSlot.to >= timeSlot.to) {
                 blocked = true
                 iterator.remove()
 
@@ -202,8 +202,4 @@ class BookingService(
         roomSlots.sortBy { it.from }
         return blocked
     }
-
-
-    private fun LocalTime.isBeforeOrEqual(otherTime: LocalTime): Boolean = this.isBefore(otherTime) || this == otherTime
-    private fun LocalTime.isAfterOrEqual(otherTime: LocalTime): Boolean = this.isAfter(otherTime) || this == otherTime
 }
